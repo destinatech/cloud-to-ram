@@ -1,0 +1,14 @@
+[Unit]
+Description=cloud-to-ram service
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/cloud-to-ram -v
+TimeoutStartSec=600
+RemainAfterExit=true
+ExecStop=/bin/true
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target
