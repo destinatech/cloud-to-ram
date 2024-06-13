@@ -111,6 +111,28 @@ function stop_services()
 }
 ## }}}
 
+function is_user_service()
+{
+  case "$1" in
+    user@*.service)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+## {{{ stop_user_slices()
+function stop_user_slices()
+{
+  info "Stopping user slices"
+
+  for s in $(running_services)
+  do
+    is_user_service "$s" && stop_service "$s"
+  done
+}
+## }}}
+
 ## {{{ restart_services()
 function restart_services()
 {
@@ -302,8 +324,14 @@ function main()
   check_distro
   check_deps
 
+  # Stop user slices first, then stop all non-ignored services
+  stop_user_slices
   stop_services
+
+  # Migrate root fs to zram device
   zram_rootfs_migrate
+
+  # Attempt to restart all services
   restart_services
 
   return 0
