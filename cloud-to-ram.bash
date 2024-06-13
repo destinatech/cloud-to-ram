@@ -143,8 +143,12 @@ function restart_services()
   service networking restart || warn "networking: service restart failed"
 
   info "Restarting services"
-  for s in $(running_services)
+
+  local s
+  for s in $(running_services) dbus rsyslog systemd-{networkd,resolved} ssh
   do
+    is_user_service "$s" && continue
+    info "Restarting service: $s"
     restart_service "$s"
   done
 }
@@ -333,6 +337,7 @@ function main()
 
   # Attempt to restart all services
   restart_services
+  stop_user_slices
 
   return 0
 }
