@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Script filename
-SCRIPT_NAME="$(basename "$0")"
+# Make sure $SCRIPT_NAME is set appropriately
+SCRIPT_NAME="${0##*/}"
 
 ## Global variables
 
@@ -202,6 +202,38 @@ function zram_rootfs_migrate()
 }
 ## }}}
 
+function lsb_release_id()
+{
+  local id="$(lsb_release -i 2>/dev/null || echo Unknown)"
+
+  if [[ $id != Unknown ]]
+  then
+    if [[ $id =~ '^Detected distro: ' ]]
+    then
+      id="$(echo '$id' |sed s/^Detected distro: //g)"
+      echo "$id"
+    fi
+  fi
+
+  echo "$id"
+}
+
+## {{{ check_distro()
+function check_distro()
+{
+  local id="$(lsb_release_id)"
+  case "$id" in
+    Ubuntu)
+      # Supported, nothing to do
+      ;;
+    Unknown)
+      # Unsupported, exit with error
+      die "Detected distro '$id' is not supported"
+      ;;
+  esac
+}
+## }}}
+
 ## {{{ check_deps()
 function check_deps()
 {
@@ -260,6 +292,7 @@ function main()
   done
 
   # Ensure we're running on a systemd-based system
+  check_distro
   check_deps
 
   stop_services
