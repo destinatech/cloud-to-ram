@@ -6,9 +6,9 @@ SCRIPT_NAME="${0##*/}"
 ## Global variables
 
 VERBOSE=0                     # Controls how noisy this script should be
-ZRAM_DEVICE=/dev/zram0        # Default ZRAM device
+ZRAM_DEVICE=                  # Default ZRAM device
 ZRAM_TMPROOT=/tmp/zramroot    # ZRAM rootfs mount point
-ZRAM_DISKSIZE=$((1024+512))M  # ZRAM rootfs size (defaults to 1.5G)
+ZRAM_DISKSIZE=2560M           # ZRAM rootfs size (defaults to 1.5G)
 ZRAM_COMP_ALGORITHM=lz4       # ZRAM compression algorithm
 
 ## {{{ error()
@@ -131,14 +131,19 @@ function restart_services()
 ## {{{ zram_rootfs_config()
 function zram_rootfs_config()
 {
-  info "Configuring $ZRAM_DEVICE"
+  info "Configuring zram"
 
   modprobe zram || die "zram: modprobe failed"
 
-  echo $ZRAM_COMP_ALGORITHM > /sys/block/zram0/comp_algorithm \
-    || die "/sys/block/zram0/comp_algorithm: echo failed"
-  echo $ZRAM_DISKSIZE > /sys/block/zram0/disksize \
-    || die "/sys/block/zram0/disksize: echo failed"
+  local zramctl_cmd=(zramctl -a "$ZRAM_COMP_ALGORITHM" -f -s "$ZRAM_DISKSIZE")
+  "${zramctl_cmd[@]}" >/tmp/zramctl.out 2>&1
+  local ret=$?
+  [[ $ret -ne 0 ]] && {
+    error "zramctl failed: $(< /tmp/zramctl.out)"
+    die "failed setting up zram device, bailing out"
+  }
+
+  ZRAM_DEVICE="$(< /tmp/zramctl.out)"
 }
 ## }}}
 
@@ -202,6 +207,7 @@ function zram_rootfs_migrate()
 }
 ## }}}
 
+## {{{ lsb_release_id()
 function lsb_release_id()
 {
   local id="$(lsb_release -i 2>/dev/null || echo Unknown)"
@@ -217,6 +223,7 @@ function lsb_release_id()
 
   echo "$id"
 }
+## }}}
 
 ## {{{ check_distro()
 function check_distro()
