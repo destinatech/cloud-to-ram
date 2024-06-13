@@ -339,6 +339,43 @@ function main()
   restart_services
   stop_user_slices
 
+  # Force systemd to re-exec
+  systemctl daemon-reexec
+
+  # FIXME: This is a shoddy hack, remove once the port is working and we've
+  # cobbled together better service-handling logic
+  local s
+  for s in $(running_services)
+  do
+    case "$s" in
+      user@*.service)
+        systemctl stop "$s"
+        ;;
+      *getty*@tty*.service)
+        systemctl stop "$s"
+        ;;
+      google-guest*)
+        systemctl stop "$s"
+        ;;
+      *)
+        systemctl stop "$s"
+        systemctl restart "$s"
+        ;;
+    esac
+  done
+
+  # FIXME: Yet another hack that needs to die...
+  kill -TERM $(ps wwwaux |grep 'systemd --user' |grep -v grep |awk '{print $2}')
+  for proc in agetty sshd
+  do
+    killall -HUP $proc
+    killall -TERM $proc
+  done
+
+  # Ensure ssh is up and running
+  service ssh stop
+  service ssh start
+
   return 0
 }
 ## }}}
