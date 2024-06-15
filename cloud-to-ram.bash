@@ -376,6 +376,9 @@ function main()
   service ssh stop
   service ssh start
 
+  # Finally, umount all filesystems that aren't in use
+  umount -a || warn "umount -a returned non-zero"
+
   return 0
 }
 ## }}}
